@@ -71,15 +71,15 @@ body{margin:0;min-height:100vh;background:radial-gradient(circle at 60% -15%,#34
 .owl-mark{width:112px;height:auto;color:#d7c29a;display:block;margin:8px auto 14px;}
 
 body{padding-top:104px}
-.tbar{position:fixed;top:0;left:0;right:0;z-index:60;background:#151d17f2;color:#f1ebda;border-bottom:1px solid #8c7450;box-shadow:0 8px 30px #0008;padding:9px 18px 10px;backdrop-filter:blur(4px)}
+.tbar{position:fixed;top:0;left:0;right:0;z-index:60;background:#151d17f2;color:#f1ebda;border-bottom:1px solid #8c7450;box-shadow:0 8px 30px #0008;padding:12px 22px 14px;backdrop-filter:blur(4px)}
 .tb-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap;max-width:1180px;margin:0 auto}
-.tb-clock{font:600 22px 'IBM Plex Mono';letter-spacing:.06em;color:#d1bd8a;font-variant-numeric:tabular-nums}
-.tb-drift{font:600 15px 'IBM Plex Mono';letter-spacing:.12em;text-transform:uppercase;padding:6px 14px;border-radius:99px;border:1px solid #8c745088;font-variant-numeric:tabular-nums}
+.tb-clock{font:600 38px 'IBM Plex Mono';letter-spacing:.06em;color:#d1bd8a;font-variant-numeric:tabular-nums}
+.tb-drift{font:700 28px 'IBM Plex Mono';letter-spacing:.08em;text-transform:uppercase;padding:8px 22px;border-radius:99px;border:1px solid #8c745088;font-variant-numeric:tabular-nums}
 .tb-drift.late{background:var(--wine);color:#f6e9e0;border-color:#b3475a}
 .tb-drift.ahead{background:#2f5a3a;color:#e6f0df;border-color:#5e9468}
 .tb-drift.ok{background:#3a3f33;color:#d9d2bc}
-.tb-now{font:500 12px 'IBM Plex Mono';letter-spacing:.1em;text-transform:uppercase;color:#cdbb8f;flex:1;min-width:200px;text-align:right;font-variant-numeric:tabular-nums}
-.tb-msg{max-width:1180px;margin:6px auto 0;font:italic 400 17px/1.3 Cardo,Georgia,serif;color:#f1ebda;min-height:22px}
+.tb-now{font:600 19px 'IBM Plex Mono';letter-spacing:.06em;text-transform:uppercase;color:#cdbb8f;flex:1;min-width:200px;text-align:right;font-variant-numeric:tabular-nums}
+.tb-msg{max-width:1180px;margin:10px auto 0;font:italic 400 27px/1.3 Cardo,Georgia,serif;color:#f1ebda;min-height:34px}
 .tb-msg.late{color:#f0b9b0}.tb-msg.ahead{color:#b9dcae}
 .q{grid-template-columns:58px 1fr auto 38px}
 .tline{font:500 11px 'IBM Plex Mono';letter-spacing:.08em;color:#6b6454;margin-top:5px;line-height:1.6;font-variant-numeric:tabular-nums}
@@ -93,7 +93,7 @@ body{padding-top:104px}
 .q.fin .qtitle{opacity:.55}
 .brk{display:flex;align-items:center;gap:12px;margin:10px 0 6px;font:500 11px 'IBM Plex Mono';letter-spacing:.14em;text-transform:uppercase;color:#7a7160}
 .brk:before,.brk:after{content:"";flex:1;height:1px;background:#a8987a}
-@media(max-width:650px){body{padding-top:132px}.q{grid-template-columns:36px 1fr 31px}.q .tbtns{grid-column:2 / 4;justify-content:flex-start}.tb-now{text-align:left}.tb-clock{font-size:18px}}
+@media(max-width:650px){body{padding-top:190px}.q{grid-template-columns:36px 1fr 31px}.q .tbtns{grid-column:2 / 4;justify-content:flex-start}.tb-now{text-align:left}.tb-clock{font-size:28px}.tb-drift{font-size:20px;padding:6px 14px}.tb-now{font-size:15px}.tb-msg{font-size:21px}}
 </style>
 </head>
 <body>
@@ -245,6 +245,7 @@ const chOf=n=>chapters.findIndex(c=>n>=c.a&&n<=c.b);
 let state={red:{},redDone:{},pauses:{},rep:{},t:{},used:{},cmt:null};
 try{state={...state,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch(e){}
 state.t=state.t||{};state.used=state.used||{};
+if(!state.seed1){state.t[1]={s:BASE,e:BASE+8*60000};state.t[2]={s:BASE+8*60000};state.seed1=true;try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
 const p2=x=>String(x).padStart(2,'0');
 const hm=ms=>{const d=new Date(ms);return p2(d.getHours())+':'+p2(d.getMinutes())};
@@ -348,6 +349,7 @@ function render(){
 let lastKey='';
 function tick(){
  const now=Date.now();
+ document.body.style.paddingTop=(document.getElementById('tbar').offsetHeight+14)+'px';
  document.getElementById('tbClock').textContent=hms(now);
  const d=drift(now),dr=document.getElementById('tbDrift');
  if(d>30000){dr.className='tb-drift late';dr.textContent='Kasniš '+mmss(d)}
