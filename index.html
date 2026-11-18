@@ -99,6 +99,8 @@ body{padding-top:104px}
 .ted input{font:600 14px 'IBM Plex Mono';padding:5px 8px;border:1px solid #8c7450;border-radius:6px;background:#fbf7ea;color:#252720}
 .ted .edh{color:#8a8372;font-size:11px}
 .tbtns{flex-wrap:wrap}
+.brk2{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;margin:8px 0 6px;padding:6px 0;border-bottom:1px dashed #a8987a}
+.brk2 .brk{margin:0 0 2px}
 </style>
 </head>
 <body>
@@ -247,9 +249,9 @@ const PLAN={};
  if(ci<chapters.length-1){c.brk={s:BASE+off*60000,e:BASE+(off+PAUSE)*60000};off+=PAUSE;}else c.brk=null;});})();
 const TOTAL=65;
 const chOf=n=>chapters.findIndex(c=>n>=c.a&&n<=c.b);
-let state={red:{},redDone:{},pauses:{},rep:{},t:{},used:{},cmt:null};
+let state={red:{},redDone:{},pauses:{},rep:{},t:{},used:{},cmt:null,b:{}};
 try{state={...state,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch(e){}
-state.t=state.t||{};state.used=state.used||{};
+state.t=state.t||{};state.used=state.used||{};state.b=state.b||{};
 if(!state.seed1){state.t[1]={s:BASE,e:BASE+8*60000};state.t[2]={s:BASE+8*60000};state.seed1=true;try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
 const p2=x=>String(x).padStart(2,'0');
@@ -293,6 +295,7 @@ function paintMsg(){const el=document.getElementById('tbMsg');if(!el)return;el.t
 function startQ(n){
  const now=Date.now(),r=runningN();
  if(r&&r!==n){state.t[r].e=now}
+ {const rb=runningB();if(rb)state.b[rb-1].e=now}
  state.t[n]={s:now};save();say(n);render();
 }
 function endQ(n){
@@ -318,8 +321,9 @@ function _parseT(str,orig){
  if(d.getTime()>Date.now()+3600000)d.setDate(d.getDate()-1);
  return d.getTime();
 }
-function openEd(n){editN=n;render()}
-function cancelEd(){editN=0;render()}
+let editB=0;
+function openEd(n){editN=n;editB=0;render()}
+function cancelEd(){editN=0;editB=0;render()}
 function saveEd(n){
  const t=state.t[n]||{};
  const s=_parseT(document.getElementById('edS').value,t.s),e=_parseT(document.getElementById('edE').value,t.e);
@@ -337,6 +341,28 @@ function saveEd(n){
 function editorHTML(n){
  const t=state.t[n]||{};
  return `<div class="ted"><label>Počela <input type="time" step="1" id="edS" value="${t.s?_hms(t.s):''}"></label><label>Završila <input type="time" step="1" id="edE" value="${t.e?_hms(t.e):''}"></label><button class="tbtn go" onclick="saveEd(${n})">Sačuvaj</button><button class="tbtn rs" onclick="cancelEd()">Otkaži</button><span class="edh">prazno polje = nije upisano</span></div>`;
+}
+
+function runningB(){for(let i=0;i<chapters.length-1;i++){const t=state.b[i];if(t&&t.s&&!t.e)return i+1}return 0}
+function startB(i){const now=Date.now(),r=runningN();if(r)state.t[r].e=now;const rb=runningB();if(rb&&rb-1!==i)state.b[rb-1].e=now;state.b[i]={s:now};save();render()}
+function endB(i){state.b[i].e=Date.now();save();render()}
+function resetB(i){delete state.b[i];save();render()}
+function openEdB(i){editB=i+1;editN=0;render()}
+function btline(i){const c=chapters[i],t=state.b[i]||{};let h=`plan <b>${hm(c.brk.s)}–${hm(c.brk.e)}</b> (${PAUSE} min)`;
+ if(t.s)h+=` · počela <b>${hms(t.s)}</b>`;
+ if(t.e){const x=(t.e-t.s)-PAUSE*60000;h+=` · završila <b>${hms(t.e)}</b> · trajalo <b>${mmss(t.e-t.s)}</b> <span class="${x>60000?'neg':x<-60000?'pos':''}">(${dmin(x)})</span>`}
+ else if(t.s)h+=` · <span class="el" data-elb="${i}"></span>`;
+ return h}
+function editorHTMLB(i){const t=state.b[i]||{};
+ return `<div class="ted"><label>Počela <input type="time" step="1" id="edS" value="${t.s?_hms(t.s):''}"></label><label>Završila <input type="time" step="1" id="edE" value="${t.e?_hms(t.e):''}"></label><button class="tbtn go" onclick="saveEdB(${i})">Sačuvaj</button><button class="tbtn rs" onclick="cancelEd()">Otkaži</button><span class="edh">prazno polje = nije upisano</span></div>`}
+function saveEdB(i){
+ const t=state.b[i]||{};
+ const s=_parseT(document.getElementById('edS').value,t.s),e=_parseT(document.getElementById('edE').value,t.e);
+ if(s===undefined||e===undefined){alert('Vreme upiši kao SS:MM (npr. 23:15).');return}
+ if(!s&&e){alert('Upiši i vreme početka.');return}
+ if(s&&e&&e<=s){alert('Kraj mora biti posle početka.');return}
+ if(!s&&!e)delete state.b[i];else{state.b[i]={s:s};if(e)state.b[i].e=e}
+ save();editB=0;render();
 }
 function render(){
  const wrap=document.getElementById('questions');wrap.innerHTML='';
@@ -360,7 +386,12 @@ function render(){
      sec.appendChild(row);
    }
    wrap.appendChild(sec);
-   if(c.brk){const b=document.createElement('div');b.className='brk';b.textContent=`pauza ${PAUSE} min · ${hm(c.brk.s)}–${hm(c.brk.e)}`;wrap.appendChild(b)}
+   if(c.brk){const b=document.createElement('div');b.className='brk2';const t=state.b[ci]||{},run=t.s&&!t.e,fin=!!t.e;
+    let btn=fin?`<button class="tbtn rs" data-a="rs" title="Poništi">↺</button>`:run?`<button class="tbtn stop" data-a="end">Završila pauzu</button>`:`<button class="tbtn go" data-a="start">Počela pauzu</button>`;
+    btn+=` <button class="tbtn rs" data-a="ed" title="Upiši vreme ručno">✎</button>`;
+    b.innerHTML=`<div><div class="brk">☕ pauza ${PAUSE} min</div><div class="tline">${btline(ci)}</div>${editB===ci+1?editorHTMLB(ci):''}</div><div class="tbtns">${btn}</div>`;
+    b.querySelectorAll('.tbtns .tbtn').forEach(x=>{x.onclick=()=>{const a=x.dataset.a;if(a==='start')startB(ci);else if(a==='end')endB(ci);else if(a==='ed')openEdB(ci);else resetB(ci)}});
+    wrap.appendChild(b)}
  });
  const redNums=Object.keys(state.red).filter(k=>state.red[k]).map(Number).sort((a,b)=>a-b);
  document.getElementById('redCount').textContent=redNums.length;
@@ -396,15 +427,20 @@ function tick(){
   const rem=PLAN[r].e-now,el=now-state.t[r].s;
   now_.textContent=`Pitanje ${p2(r)} · ${rem>=0?'preostalo '+mmss(rem):'prekoračeno '+mmss(rem)} · prošlo ${mmss(el)}`;
   document.querySelectorAll('[data-el]').forEach(e=>{const q=+e.dataset.el;const rr=PLAN[q].e-now;e.textContent=(rr>=0?'preostalo ':'prekoračeno ')+mmss(rr);e.parentElement.parentElement.parentElement.classList.toggle('late-row',rr<0)});
+ }else if(runningB()){
+  const i=runningB()-1,tt=state.b[i],rem=PAUSE*60000-(now-tt.s);
+  now_.textContent=`Pauza ${i+1}/${chapters.length-1} · `+(rem>=0?'preostalo ':'prekoračeno ')+mmss(rem);
  }else if(nx){
   const w=PLAN[nx].s-now;
   now_.textContent=w>0?`Sledeće: ${p2(nx)} u ${hm(PLAN[nx].s)} · za ${mmss(w)}`:`Pitanje ${p2(nx)} je trebalo da počne u ${hm(PLAN[nx].s)}`;
  }else now_.textContent='Sva pitanja prvog prolaza su gotova';
+ document.querySelectorAll('[data-elb]').forEach(e=>{const q=+e.dataset.elb,tt=state.b[q];if(!tt)return;const rr=PAUSE*60000-(now-tt.s);e.textContent=(rr>=0?'preostalo ':'prekoračeno ')+mmss(rr);e.style.color=rr<0?'#7b1e2d':''});
  // periodični komentari kad kasni
  let key='';
- if(r&&now>PLAN[r].e)key='r'+r+':'+Math.floor((now-PLAN[r].e)/300000);
+ if(!r&&runningB()){const i=runningB()-1,over=now-state.b[i].s-PAUSE*60000;if(over>0)key='b'+i+':'+Math.floor(over/300000)}
+ else if(r&&now>PLAN[r].e)key='r'+r+':'+Math.floor((now-PLAN[r].e)/300000);
  else if(!r&&nx&&now>PLAN[nx].s+30000)key='i'+nx+':'+Math.floor((now-PLAN[nx].s)/300000);
- if(key&&key!==lastKey){lastKey=key;say(r||nx)}
+ if(key&&key!==lastKey){lastKey=key;say(key[0]==='b'?chapters[+key.slice(1).split(':')[0]].b:(r||nx))}
 }
 setInterval(tick,1000);
 render();
