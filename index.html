@@ -94,6 +94,11 @@ body{padding-top:104px}
 .brk{display:flex;align-items:center;gap:12px;margin:10px 0 6px;font:500 11px 'IBM Plex Mono';letter-spacing:.14em;text-transform:uppercase;color:#7a7160}
 .brk:before,.brk:after{content:"";flex:1;height:1px;background:#a8987a}
 @media(max-width:650px){body{padding-top:190px}.q{grid-template-columns:36px 1fr 31px}.q .tbtns{grid-column:2 / 4;justify-content:flex-start}.tb-now{text-align:left}.tb-clock{font-size:28px}.tb-drift{font-size:20px;padding:6px 14px}.tb-now{font-size:15px}.tb-msg{font-size:21px}}
+.ted{margin-top:9px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font:500 12px 'IBM Plex Mono'}
+.ted label{display:flex;align-items:center;gap:6px;color:#4a4437}
+.ted input{font:600 14px 'IBM Plex Mono';padding:5px 8px;border:1px solid #8c7450;border-radius:6px;background:#fbf7ea;color:#252720}
+.ted .edh{color:#8a8372;font-size:11px}
+.tbtns{flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -302,6 +307,37 @@ function tline(n){
  else if(t&&t.s){h+=` · <span class="el" data-el="${n}"></span>`}
  return h;
 }
+
+let editN=0;
+const _hms=ms=>{const d=new Date(ms);return p2(d.getHours())+':'+p2(d.getMinutes())+':'+p2(d.getSeconds())};
+function _norm(s){s=(s||'').trim();if(!s)return '';const m=s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);if(!m)return null;return p2(+m[1])+':'+m[2]+':'+(m[3]||'00')}
+function _parseT(str,orig){
+ const nrm=_norm(str);if(nrm===null)return undefined;if(!nrm)return 0;
+ if(orig&&_hms(orig)===nrm)return orig;
+ const [h,mi,se]=nrm.split(':').map(Number);const d=new Date();d.setHours(h,mi,se,0);
+ if(d.getTime()>Date.now()+3600000)d.setDate(d.getDate()-1);
+ return d.getTime();
+}
+function openEd(n){editN=n;render()}
+function cancelEd(){editN=0;render()}
+function saveEd(n){
+ const t=state.t[n]||{};
+ const s=_parseT(document.getElementById('edS').value,t.s),e=_parseT(document.getElementById('edE').value,t.e);
+ if(s===undefined||e===undefined){alert('Vreme upiši kao SS:MM (npr. 23:15).');return}
+ if(!s&&e){alert('Upiši i vreme početka.');return}
+ if(s&&e&&e<=s){alert('Kraj mora biti posle početka.');return}
+ const r=runningN();
+ if(s&&!e&&r&&r!==n){alert('Pitanje '+r+' je još u toku. Prvo upiši njegov kraj.');return}
+ const hadEnd=!!t.e;
+ if(!s&&!e)delete state.t[n];else{state.t[n]={s:s};if(e)state.t[n].e=e}
+ save();editN=0;
+ if(e&&!hadEnd)say(n);
+ render();
+}
+function editorHTML(n){
+ const t=state.t[n]||{};
+ return `<div class="ted"><label>Počela <input type="time" step="1" id="edS" value="${t.s?_hms(t.s):''}"></label><label>Završila <input type="time" step="1" id="edE" value="${t.e?_hms(t.e):''}"></label><button class="tbtn go" onclick="saveEd(${n})">Sačuvaj</button><button class="tbtn rs" onclick="cancelEd()">Otkaži</button><span class="edh">prazno polje = nije upisano</span></div>`;
+}
 function render(){
  const wrap=document.getElementById('questions');wrap.innerHTML='';
  let dn=0;for(let n=1;n<=TOTAL;n++)if(state.t[n]&&state.t[n].e)dn++;
@@ -316,9 +352,9 @@ function render(){
      if(fin)btn=`<button class="tbtn rs" title="Poništi vreme" data-a="rs">↺</button>`;
      else if(run)btn=`<button class="tbtn stop" data-a="end">Završila</button>`;
      else btn=`<button class="tbtn go" data-a="start">Počela</button>`;
-     row.innerHTML=`<div class="num">${String(n).padStart(2,'0')}</div><div><div class="qtitle">${questions[n-1]}</div><div class="tline">${tline(n)}</div></div><div class="tbtns">${btn}</div><label class="featherToggle" aria-label="Crvena zona pitanje ${n}"><input type="checkbox" ${state.red[n]?'checked':''}>${featherSVG}</label>`;
-     const b=row.querySelector('.tbtn');
-     b.onclick=()=>{const a=b.dataset.a;if(a==='start')startQ(n);else if(a==='end')endQ(n);else resetQ(n)};
+     btn+=` <button class="tbtn rs" data-a="ed" title="Upiši vreme ručno">✎</button>`;
+     row.innerHTML=`<div class="num">${String(n).padStart(2,'0')}</div><div><div class="qtitle">${questions[n-1]}</div><div class="tline">${tline(n)}</div>${editN===n?editorHTML(n):''}</div><div class="tbtns">${btn}</div><label class="featherToggle" aria-label="Crvena zona pitanje ${n}"><input type="checkbox" ${state.red[n]?'checked':''}>${featherSVG}</label>`;
+     row.querySelectorAll('.tbtns .tbtn').forEach(b=>{b.onclick=()=>{const a=b.dataset.a;if(a==='start')startQ(n);else if(a==='end')endQ(n);else if(a==='ed')openEd(n);else resetQ(n)}});
      const red=row.querySelector('.featherToggle input');
      red.onchange=()=>{state.red[n]=red.checked;if(!red.checked) delete state.redDone[n];save();render()};
      sec.appendChild(row);
