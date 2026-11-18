@@ -101,6 +101,11 @@ body{padding-top:104px}
 .tbtns{flex-wrap:wrap}
 .brk2{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;margin:8px 0 6px;padding:6px 0;border-bottom:1px dashed #a8987a}
 .brk2 .brk{margin:0 0 2px}
+.cm{margin-top:9px;display:flex;gap:8px;align-items:center}
+.cmin{flex:1;min-width:0;font:400 14px Cardo,Georgia,serif;padding:7px 10px;border:1px solid #b9aa8e;border-radius:8px;background:#fbf7ea;color:#252720}
+.cmb{padding:7px 12px}
+.cmrep{margin-top:6px;font:italic 400 16px/1.35 Cardo,Georgia,serif;color:#57131d}
+.cmrep:empty{display:none}
 </style>
 </head>
 <body>
@@ -251,7 +256,7 @@ const TOTAL=65;
 const chOf=n=>chapters.findIndex(c=>n>=c.a&&n<=c.b);
 let state={red:{},redDone:{},pauses:{},rep:{},t:{},used:{},cmt:null,b:{}};
 try{state={...state,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch(e){}
-state.t=state.t||{};state.used=state.used||{};state.b=state.b||{};
+state.t=state.t||{};state.used=state.used||{};state.b=state.b||{};state.c=state.c||{};
 if(!state.seed1){state.t[1]={s:BASE,e:BASE+8*60000};state.t[2]={s:BASE+8*60000};state.seed1=true;try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
 const p2=x=>String(x).padStart(2,'0');
@@ -364,6 +369,86 @@ function saveEdB(i){
  if(!s&&!e)delete state.b[i];else{state.b[i]={s:s};if(e)state.b[i].e=e}
  save();editB=0;render();
 }
+
+const _esc=x=>String(x||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function cmHTML(key){
+ const c=state.c[key]||{};
+ return `<div class="cm"><input class="cmin" id="cm_${key}" placeholder="Komentar (npr. bilo je teško)…" value="${_esc(c.t)}" oninput="saveDraft('${key}',this.value)" onkeydown="if(event.key==='Enter')sendCm('${key}')"><button class="tbtn cmb" onclick="sendCm('${key}')">Odgovori</button></div><div class="cmrep" id="cr_${key}">${_esc(c.r)}</div>`;
+}
+function saveDraft(key,v){state.c[key]=state.c[key]||{};state.c[key].t=v;save()}
+const CL={
+ hard:{y:["Pitanje je zaista među dužim, pa ti verujem. Prolazi bez kazne.","Teško je, a plan ti je dao više minuta, i to opravdava. Gledam kroz prste.","Priznajem, ovo nije lako gradivo. Ovog puta bez prigovora.","Težina je stvarna, a odstupanje razumno. Primljeno.","Ako je pitanje teško, a ti si ga ipak savladala u okvirima plana, to je rezultat, a ne izgovor."],
+        n:["Teško je svima, a plan to već uračunava. Odstupanje ostaje na tebi.","Težina nije izgovor kad pitanje nije među dužim. Još jedan minut zaostatka.","„Teško“ je ono što kažemo kad ne želimo da kažemo „odlagala sam“.","Pitanje je obično, a komentar veliki.","Gradivo nije teže od proseka, samo je tvoj tempo sporiji."]},
+ tired:{y:["Umor je legitiman razlog, a rezultat je u granicama. Prolazi.","Telo traži svoje, a ti si ipak izdržala. Gledam kroz prste.","Umor je stvaran, a ti si ostala u planu. Tačka.","Za to postoje pauze; ne dugujem ti objašnjenje.","Priznajem umor, rezultat ga ne dokazuje, ali ga ne pobija."],
+        n:["Umor nije alibi: sat ne zna za njega.","Umorna si i još kasniš. Umor je objašnjenje, a ne oprost.","Spavanje je zakazano za kasnije, ne za sada.","Umor je stvaran, kašnjenje je stvarno; samo jedno od toga je tvoja odluka.","Telo zna da se umori, a plan ne zna da čeka."]},
+ distract:{y:[],n:["Telefon nije otišao sa pitanja, ti si otišla sa pitanja.","Pažnja je resurs, a ti si je dala nekome ko ti ne piše ispit.","Skrolovanje je najskuplja vrsta odlaganja.","Distrakcija je izbor, a ne događaj.","Svet se nije promenio u tih nekoliko minuta; tvoj zaostatak jeste."]},
+ needs:{y:["Glad, žeđ i toalet su osnovne potrebe, bez prigovora.","Priznata potreba, nema kazne.","Telo se ne pregovara; vreme se može.","To je opravdano i ne treba ti odobrenje.","Gladna misliteljka ne misli dobro; sve je u redu."],
+        n:["Potreba je stvarna, ali trajanje nije bilo samo potrebe.","Kafa ne traje toliko dugo.","Bila je to potreba ili pauza koja se pretvorila u odlaganje?","Jesti treba, ali ne uz zaostatak.","Priznajem potrebu, osporavam dužinu."]},
+ easy:{y:["Lako ti je, a i rezultat to pokazuje. Pohvala.","Brzo i tačno: tako to treba.","Kad je lako, ovako i izgleda.","Ako ti je lako, ostaje više vremena. Dobro.","Znanje se vidi u tempu."],
+       n:["Lako ti je, a kasniš? Onda problem nije u gradivu.","„Lako“ i „zaostatak“ ne idu zajedno.","Ako je lako, kome duguješ ovo odstupanje?","Lako je ono što kažeš, a ne ono što pokazuje sat.","Lako, a sat se ne slaže."]},
+ other:{y:["Primljeno. Rezultat ti ide u prilog, pa ne tražim dalje.","Dobro, prihvatam.","Nema primedbi, brojke su na tvojoj strani.","Ne treba ti opravdanje, plan je ispunjen.","Zabeleženo, bez zamerke."],
+        n:["Zabeleženo, ali brojke govore drugačije od komentara.","Objašnjenje ne vraća izgubljeni minut.","Lepo objašnjeno, loše vreme.","Komentar je prihvaćen, odstupanje nije.","Reči nisu minuti."]}
+};
+function localReply(c,text){
+ const t=text.toLowerCase();
+ let cat='other';
+ if(/te[sšž]k|komplik|ne ide|nejasn|zbunjuj|zamr|mutno|zaglav|ne razum|vrtim|ne pamtim|zaboravlj|dug[oa]|puno/.test(t))cat='hard';
+ else if(/umor|pospan|spava|iscrp|oči|glava me/.test(t))cat='tired';
+ else if(/telefon|instagram|tiktok|skrol|poruk|društven|zvao|zvala|zvonio|gledala|pričala|razgovar/.test(t))cat='distract';
+ else if(/gladn|kafa|kafu|wc|toalet|jela|jesti|piti|voda|cigar|sendvič/.test(t))cat='needs';
+ else if(/lak[oa]|brzo|jednostav|znam|ide mi/.test(t))cat='easy';
+ const late=c.delta!=null?c.delta>1:c.drift>0.5;
+ let ok;
+ if(cat==='distract')ok=false;
+ else if(cat==='hard')ok=c.planMin>=c.avgMin*1.1||!late||(c.delta!=null&&c.delta<=3);
+ else if(cat==='tired')ok=c.kind==='b'||(c.delta!=null&&c.delta<=2)||c.drift<0;
+ else if(cat==='needs')ok=c.kind==='b'||!late;
+ else ok=!late;
+ const pool=CL[cat][ok?'y':'n'].length?CL[cat][ok?'y':'n']:CL[cat].n;
+ const used=state.cu=state.cu||[];
+ let cand=pool.filter(x=>!used.includes(x));if(!cand.length)cand=pool;
+ const line=cand[Math.floor(Math.random()*cand.length)];used.push(line);if(used.length>40)used.shift();
+ let extra='';
+ if(Math.random()<0.6){extra=' '+pick(ok?'p':'l',c.ai)}
+ return line+extra;
+}
+async function askClaude(c,text){
+ try{
+  if(!(window.claude&&claude.use))return null;
+  const sample=await claude.use('sample');if(!sample)return null;
+  const recent=Object.values(state.c).map(x=>x.r).filter(Boolean).slice(-6).join(' | ');
+  const stanje=c.delta!=null?`${c.fin?'završeno':'u toku'}, trajalo ${c.act.toFixed(1)} min od planiranih ${c.planMin} min (odstupanje ${c.delta>=0?'+':''}${c.delta.toFixed(1)} min)`:`nije počela, plan ${c.planMin} min`;
+  const prompt=`Ti si strog, duhovit i pošten profesor predmeta „${SUBJ}". Studentkinja uči celu noć pred ispit i ostavila je komentar uz ${c.kind==='q'?'pitanje':'pauzu'}.
+Pitanje/pauza: ${c.title}
+Oblast: ${c.area}
+Stanje: ${stanje}. Ukupno u odnosu na plan: ${c.drift>0.5?'kasni '+c.drift.toFixed(1)+' min':c.drift<-0.5?'ispred je '+(-c.drift).toFixed(1)+' min':'na vremenu je'}. Prosečno planirano po pitanju je ${c.avgMin.toFixed(1)} min (ovo pitanje ima ${c.planMin} min, što pokazuje koliko je dugo).
+Njen komentar: „${text}“
+Zadatak: proceni da li je komentar opravdan. Uzmi u obzir dužinu pitanja prema planu, odstupanje i da li je u pitanju pauza. Ako je opravdan, gledaj joj kroz prste kratko i pošteno, bez laskanja. Ako je izgovor, isprozivaj je britko i duhovito, u filozofskom stilu predmeta i vezano za temu pitanja, bez vulgarnosti i bez pominjanja izgleda ili porodice. Pravila: srpski jezik, ženski rod za nju, 1 do 3 rečenice, ne pitaj kako je, ne daj savete ni naredbe, ne ponavljaj ranije odgovore (${recent||'nema'}). Vrati samo odgovor, bez navodnika.`;
+  const r=await sample(prompt,{modelTier:'quick',cache:false});
+  return (r&&r.text||'').trim()||null;
+ }catch(e){return null}
+}
+async function sendCm(key){
+ const inp=document.getElementById('cm_'+key);if(!inp)return;
+ const text=inp.value.trim();if(!text)return;
+ state.c[key]=state.c[key]||{};state.c[key].t=text;
+ const out=document.getElementById('cr_'+key);if(out)out.textContent='…';
+ const c=cmCtx(key);
+ let r=await askClaude(c,text);
+ if(!r)r=localReply(c,text);
+ state.c[key].r=r;save();
+ const o2=document.getElementById('cr_'+key);if(o2)o2.textContent=r;
+}
+
+const SUBJ='Savremena politička teorija';
+function cmCtx(key){
+ const kind=key[0],id=+key.slice(1),now=Date.now();
+ let title,area,planMin,ai,t;
+ if(kind==='q'){title=questions[id-1];ai=chOf(id);area=chapters[ai].name;planMin=MINS[id-1];t=state.t[id]}
+ else{ai=id;title='pauza posle oblasti „'+chapters[id].name+'“';area=chapters[id].name;planMin=PAUSE;t=state.b[id]}
+ let act=null,fin=false;if(t&&t.s){fin=!!t.e;act=((t.e||now)-t.s)/60000}
+ return {kind,title,area,ai,planMin,act,fin,delta:act==null?null:act-planMin,drift:drift(now)/60000,avgMin:MINS.reduce((a,b)=>a+b,0)/MINS.length};
+}
 function render(){
  const wrap=document.getElementById('questions');wrap.innerHTML='';
  let dn=0;for(let n=1;n<=TOTAL;n++)if(state.t[n]&&state.t[n].e)dn++;
@@ -379,7 +464,7 @@ function render(){
      else if(run)btn=`<button class="tbtn stop" data-a="end">Završila</button>`;
      else btn=`<button class="tbtn go" data-a="start">Počela</button>`;
      btn+=` <button class="tbtn rs" data-a="ed" title="Upiši vreme ručno">✎</button>`;
-     row.innerHTML=`<div class="num">${String(n).padStart(2,'0')}</div><div><div class="qtitle">${questions[n-1]}</div><div class="tline">${tline(n)}</div>${editN===n?editorHTML(n):''}</div><div class="tbtns">${btn}</div><label class="featherToggle" aria-label="Crvena zona pitanje ${n}"><input type="checkbox" ${state.red[n]?'checked':''}>${featherSVG}</label>`;
+     row.innerHTML=`<div class="num">${String(n).padStart(2,'0')}</div><div><div class="qtitle">${questions[n-1]}</div><div class="tline">${tline(n)}</div>${editN===n?editorHTML(n):''}${cmHTML('q'+n)}</div><div class="tbtns">${btn}</div><label class="featherToggle" aria-label="Crvena zona pitanje ${n}"><input type="checkbox" ${state.red[n]?'checked':''}>${featherSVG}</label>`;
      row.querySelectorAll('.tbtns .tbtn').forEach(b=>{b.onclick=()=>{const a=b.dataset.a;if(a==='start')startQ(n);else if(a==='end')endQ(n);else if(a==='ed')openEd(n);else resetQ(n)}});
      const red=row.querySelector('.featherToggle input');
      red.onchange=()=>{state.red[n]=red.checked;if(!red.checked) delete state.redDone[n];save();render()};
@@ -389,7 +474,7 @@ function render(){
    if(c.brk){const b=document.createElement('div');b.className='brk2';const t=state.b[ci]||{},run=t.s&&!t.e,fin=!!t.e;
     let btn=fin?`<button class="tbtn rs" data-a="rs" title="Poništi">↺</button>`:run?`<button class="tbtn stop" data-a="end">Završila pauzu</button>`:`<button class="tbtn go" data-a="start">Počela pauzu</button>`;
     btn+=` <button class="tbtn rs" data-a="ed" title="Upiši vreme ručno">✎</button>`;
-    b.innerHTML=`<div><div class="brk">☕ pauza ${PAUSE} min</div><div class="tline">${btline(ci)}</div>${editB===ci+1?editorHTMLB(ci):''}</div><div class="tbtns">${btn}</div>`;
+    b.innerHTML=`<div><div class="brk">☕ pauza ${PAUSE} min</div><div class="tline">${btline(ci)}</div>${editB===ci+1?editorHTMLB(ci):''}${cmHTML('b'+ci)}</div><div class="tbtns">${btn}</div>`;
     b.querySelectorAll('.tbtns .tbtn').forEach(x=>{x.onclick=()=>{const a=x.dataset.a;if(a==='start')startB(ci);else if(a==='end')endB(ci);else if(a==='ed')openEdB(ci);else resetB(ci)}});
     wrap.appendChild(b)}
  });
